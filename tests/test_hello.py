@@ -1,33 +1,24 @@
 # tests/test_hello.py
-import sys
-import importlib
-import runpy
+from __future__ import annotations
 
-from app.hello import hello
+import builtins
+import pytest
 
-
-def test_hello_returns_expected_string():
-    assert hello("World") == "Hello, World!"
+from app.hello import hello, run_interactive_loop  # noqa: F401  (ok if you’ve added it)
 
 
-def test_main_loop_greets_until_q(monkeypatch, capsys):
-    """
-    Simulate a user typing 'Chris' then 'q', ensuring we run a fresh copy of app.hello.
-    """
-    # Remove app.hello from sys.modules to force a clean import
-    sys.modules.pop("app.hello", None)
+def test_hello_returns_string() -> None:
+    assert hello("Chris") == "Hello, Chris!"
 
-    inputs = iter(["Chris", "q"])
 
-    def fake_input(_prompt=""):
-        return next(inputs, "q")
+def test_main_loop_greets_until_q(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Simulate one name then quit
+    inputs: list[str] = ["Chris", "q"]
+    monkeypatch.setattr(builtins, "input", lambda _prompt: inputs.pop(0))
 
-    monkeypatch.setattr("builtins.input", fake_input)
+    outputs: list[str] = []
+    monkeypatch.setattr("builtins.print", outputs.append)
 
-    # Reload app to clear state, then run as __main__
-    importlib.invalidate_caches()
-    runpy.run_module("app.hello", run_name="__main__")
+    run_interactive_loop()
 
-    out = capsys.readouterr().out.splitlines()
-    assert "Hello, Chris!" in out
-    assert out.count("Hello, Chris!") == 1
+    assert outputs == ["Hello, Chris!"]
